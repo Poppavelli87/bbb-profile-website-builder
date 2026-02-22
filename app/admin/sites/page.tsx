@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { AppFooter } from "@/components/AppFooter";
 import {
   archiveAdminSite,
   listAdminSites,
@@ -173,6 +174,7 @@ export default function AdminSitesPage() {
           </table>
         ) : null}
       </section>
+      <AppFooter />
     </main>
   );
 }

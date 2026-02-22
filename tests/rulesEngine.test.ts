@@ -5,8 +5,8 @@ const profile: BusinessProfile = {
   mode: "manual",
   name: "Acme Services",
   slug: "acme-services",
-  categories: [],
-  services: ["Best roof repair", "Factory direct materials"],
+  typesOfBusiness: [],
+  productsAndServices: ["Best roof repair", "Factory direct materials"],
   description: "We are #1 and offer lifetime guarantee.",
   about: "Save up to 40% versus competitors.",
   contact: {

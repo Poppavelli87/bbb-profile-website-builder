@@ -65,7 +65,7 @@ function collectText(profile: BusinessProfile): Array<{ field: string; text: str
   const blocks: Array<{ field: string; text: string }> = [
     { field: "description", text: profile.description || "" },
     { field: "about", text: profile.about || "" },
-    { field: "services", text: (profile.services || []).join(" ") }
+    { field: "productsAndServices", text: (profile.productsAndServices || []).join(" ") }
   ];
 
   (profile.faqs || []).forEach((faq, idx) => {

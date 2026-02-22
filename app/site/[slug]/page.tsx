@@ -5,6 +5,7 @@ import Script from "next/script";
 import { notFound } from "next/navigation";
 import { resolveTheme, type ProjectSection, type SiteDefinition } from "@/lib/shared";
 import { getSiteBySlug } from "@/lib/server/db/sites";
+import { renderPrivacyPolicyBodyFromInput } from "@/lib/server/privacy-policy";
 import { liveUrlForSlug } from "@/lib/server/site-service";
 
 type Params = {
@@ -47,6 +48,9 @@ main { padding: 1.2rem 0 2.4rem; display: grid; gap: 1rem; }
 .hero-image { width: 100%; height: 100%; min-height: 260px; object-fit: cover; border-radius: 14px; }
 .grid { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .card { border: 1px solid var(--border); border-radius: 12px; padding: .8rem; background: var(--surface); }
+.types-of-business { margin-top: .9rem; }
+.chip-list { display: flex; flex-wrap: wrap; gap: .45rem; }
+.chip { display: inline-flex; align-items: center; border-radius: 999px; border: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 12%, #fff); padding: .2rem .6rem; font-size: .82rem; font-weight: 600; color: var(--text); }
 .button-link { display: inline-flex; background: var(--primary); color: #fff; border-radius: 999px; padding: .5rem .9rem; text-decoration: none; font-weight: 600; }
 .site-footer { border-top: 1px solid var(--border); padding: 1.2rem 0 2rem; }
 .footer-grid { display: flex; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }
@@ -139,7 +143,7 @@ export default async function PublicSitePage({ params }: Params) {
             <h1>{model.profile.name}</h1>
           </div>
           <nav aria-label="Primary" className="nav">
-            <a className="nav-link" href="#services">Services</a>
+            <a className="nav-link" href="#services">Products and Services</a>
             <a className="nav-link" href="#about">About</a>
             <a className="nav-link" href="#contact">Contact</a>
             <a className="nav-link" href="#privacy">Privacy</a>
@@ -186,7 +190,7 @@ export default async function PublicSitePage({ params }: Params) {
 
           {sectionEnabled(sections, "services") ? (
             <section className="panel" id="services">
-              <h2>Services</h2>
+              <h2>Products and Services</h2>
               <div className="grid">
                 {content.services.map((service) => (
                   <article key={service.name} className="card">
@@ -202,6 +206,18 @@ export default async function PublicSitePage({ params }: Params) {
             <section className="panel" id="about">
               <h2>About</h2>
               <p>{content.aboutText}</p>
+              {model.profile.typesOfBusiness.length > 0 ? (
+                <div className="types-of-business">
+                  <h3>Types of Business</h3>
+                  <div className="chip-list">
+                    {model.profile.typesOfBusiness.map((item) => (
+                      <span key={item} className="chip">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </section>
           ) : null}
 
@@ -274,8 +290,16 @@ export default async function PublicSitePage({ params }: Params) {
           ) : null}
 
           <section className="panel" id="privacy">
-            <h2>Privacy</h2>
-            <p>Essential cookies are enabled by default. Optional analytics remains off until opt-in.</p>
+            <div
+              dangerouslySetInnerHTML={{
+                __html: renderPrivacyPolicyBodyFromInput({
+                  businessName: model.profile.name,
+                  contact: content.contact,
+                  analyticsEnabled: Boolean(model.profile.privacyTrackerOptIn),
+                  additionalNotes: model.profile.privacyNotes
+                })
+              }}
+            />
           </section>
         </div>
       </section>

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AppFooter } from "@/components/AppFooter";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -43,8 +44,8 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="mx-auto grid min-h-screen w-[min(460px,94vw)] place-items-center py-10">
-      <section className="panel w-full">
+    <main className="mx-auto grid min-h-screen w-[min(460px,94vw)] py-10">
+      <section className="panel w-full place-self-center">
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Admin Access</p>
         <h1 className="mt-1 text-2xl font-bold text-slate-900">Sign in to the BBB minisite admin</h1>
         <form className="mt-4 grid gap-3" onSubmit={handleSubmit}>
@@ -67,6 +68,7 @@ export default function AdminLoginPage() {
           </button>
         </form>
       </section>
+      <AppFooter />
     </main>
   );
 }
