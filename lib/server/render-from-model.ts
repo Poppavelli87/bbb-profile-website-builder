@@ -4,6 +4,7 @@ import type {
   ProjectSection,
   SectionId
 } from "@/lib/shared";
+import { renderPrivacyPolicyTemplate } from "./privacy-policy";
 
 export type RenderableImage = {
   src: string;
@@ -93,6 +94,18 @@ function renderGallery(images: RenderableImage[]): string {
   </div></section>`;
 }
 
+function renderTypesOfBusiness(typesOfBusiness: string[]): string {
+  if (typesOfBusiness.length === 0) {
+    return "";
+  }
+  return `<section class="types-of-business" aria-label="Types of Business">
+    <h3>Types of Business</h3>
+    <div class="chip-list">
+      ${typesOfBusiness.map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join("")}
+    </div>
+  </section>`;
+}
+
 function sectionMarkup(sectionId: SectionId, input: RenderInput): string {
   const { profile, content, images } = input;
   const hero = images.find((image) => image.hero) || images[0];
@@ -109,7 +122,7 @@ function sectionMarkup(sectionId: SectionId, input: RenderInput): string {
     case "quick_answers":
       return renderQuickAnswers(content);
     case "services":
-      return `<section class="panel"><h2>Services</h2><div class="card-grid">${content.services
+      return `<section class="panel"><h2>Products and Services</h2><div class="card-grid">${content.services
         .slice(0, 6)
         .map(
           (service) =>
@@ -117,7 +130,7 @@ function sectionMarkup(sectionId: SectionId, input: RenderInput): string {
         )
         .join("")}</div></section>`;
     case "about":
-      return `<section class="panel"><h2>About ${escapeHtml(profile.name)}</h2><p>${escapeHtml(content.aboutText || content.metaDescription)}</p></section>`;
+      return `<section class="panel"><h2>About ${escapeHtml(profile.name)}</h2><p>${escapeHtml(content.aboutText || content.metaDescription)}</p>${renderTypesOfBusiness(profile.typesOfBusiness || [])}</section>`;
     case "service_areas":
       return `<section class="panel"><h2>Service Areas</h2><p>${escapeHtml(content.contact.serviceAreas.join(", ") || "Contact us to confirm service coverage.")}</p></section>`;
     case "faq":
@@ -142,14 +155,19 @@ export function renderFromModelToHTML(input: RenderInput): RenderedPageBodies {
 
   return {
     home,
-    services: `<section class="panel"><h2>Our Services</h2><div class="card-grid">${input.content.services
+    services: `<section class="panel"><h2>Products and Services</h2>${renderTypesOfBusiness(input.profile.typesOfBusiness || [])}<div class="card-grid">${input.content.services
       .map(
         (service) =>
           `<article class="card"><h3>${escapeHtml(service.name)}</h3><p>${escapeHtml(service.description || "Request a tailored quote for this service.")}</p></article>`
       )
-      .join("") || "<p>Services available upon request.</p>"}</div></section>`,
-    about: `<section class="panel"><h2>About ${escapeHtml(input.profile.name)}</h2><p>${escapeHtml(input.content.aboutText || input.content.metaDescription)}</p></section>`,
+      .join("") || "<p>Products and services are available upon request.</p>"}</div></section>`,
+    about: `<section class="panel"><h2>About ${escapeHtml(input.profile.name)}</h2><p>${escapeHtml(input.content.aboutText || input.content.metaDescription)}</p>${renderTypesOfBusiness(input.profile.typesOfBusiness || [])}</section>`,
     contact: `<section class="panel"><h2>Contact</h2>${renderContact(input.content)}</section><section class="panel"><h2>Hours</h2>${hoursTable(input.content.contact.hours || {})}</section><section class="panel"><h2>Service Areas</h2><p>${escapeHtml(input.content.contact.serviceAreas.join(", ") || "Contact us to confirm service area coverage.")}</p></section>`,
-    privacy: `<section class="panel"><h2>Privacy Policy</h2><p>We use essential cookies by default. Optional analytics remains off until explicit opt-in.</p><p>No third-party trackers are enabled by default.</p><p>${input.profile.privacyTrackerOptIn ? "Analytics hooks may run only after user consent." : "Analytics is disabled until opt-in."}</p><p>${escapeHtml(input.profile.privacyNotes || "Contact us for privacy requests and data handling questions.")}</p></section>`
+    privacy: renderPrivacyPolicyTemplate({
+      businessName: input.profile.name,
+      contact: input.content.contact,
+      analyticsEnabled: Boolean(input.profile.privacyTrackerOptIn),
+      additionalNotes: input.profile.privacyNotes
+    })
   };
 }

@@ -6,8 +6,8 @@ export function createEmptyProfile(name = ""): BusinessProfile {
     mode: "manual",
     name: businessName,
     slug: createSlug(businessName),
-    categories: [],
-    services: [],
+    typesOfBusiness: [],
+    productsAndServices: [],
     description: "",
     about: "",
     contact: {

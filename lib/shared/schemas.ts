@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeTokens } from "./tokens";
 
 export const extractionModeSchema = z.enum(["auto", "upload_html", "manual"]);
 
@@ -71,6 +72,11 @@ export const generatedServiceSchema = z.object({
   description: z.string().default("")
 });
 
+const tokenArraySchema = z.preprocess(
+  (input) => normalizeTokens(input as string | string[] | null | undefined),
+  z.array(z.string())
+);
+
 export const generatedContentSchema = z.object({
   siteTitle: z.string().min(1),
   metaDescription: z.string().default(""),
@@ -83,23 +89,23 @@ export const generatedContentSchema = z.object({
   quickAnswers: z.array(faqSchema).default([]),
   contact: contactSchema.extend({
     hours: z.record(z.string()).default({}),
-    serviceAreas: z.array(z.string()).default([])
+    serviceAreas: tokenArraySchema.default([])
   })
 });
 
-export const businessProfileSchema = z.object({
+const businessProfileBaseSchema = z.object({
   id: z.string().optional(),
   bbbUrl: z.string().url().optional(),
   mode: extractionModeSchema,
   name: z.string().min(1),
   slug: z.string().min(1),
-  categories: z.array(z.string()).default([]),
-  services: z.array(z.string()).default([]),
+  typesOfBusiness: tokenArraySchema.default([]),
+  productsAndServices: tokenArraySchema.default([]),
   description: z.string().default(""),
   about: z.string().default(""),
   contact: contactSchema,
   hours: z.record(z.string()).default({}),
-  serviceAreas: z.array(z.string()).default([]),
+  serviceAreas: tokenArraySchema.default([]),
   images: z.array(imageAssetSchema).default([]),
   logoUrl: z.string().url().optional(),
   faqs: z.array(faqSchema).default([]),
@@ -108,6 +114,20 @@ export const businessProfileSchema = z.object({
   privacyTrackerOptIn: z.boolean().default(false),
   privacyNotes: z.string().default("")
 });
+
+export const businessProfileSchema = z.preprocess((input) => {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return input;
+  }
+  const raw = input as Record<string, unknown>;
+  return {
+    ...raw,
+    typesOfBusiness:
+      raw.typesOfBusiness !== undefined ? raw.typesOfBusiness : raw.categories,
+    productsAndServices:
+      raw.productsAndServices !== undefined ? raw.productsAndServices : raw.services
+  };
+}, businessProfileBaseSchema);
 
 export const siteDefinitionSchema = z.object({
   profile: businessProfileSchema,

@@ -17,7 +17,7 @@ describe("generator edits", () => {
   it("renders edited content in generated html output", async () => {
     const profile = createEmptyProfile("Edited Headline Co");
     profile.slug = "edited-headline-co";
-    profile.services = ["Roof repair"];
+    profile.productsAndServices = ["Roof repair"];
     profile.description = "Original description";
 
     const layout = applyLayoutPreset("local-service-classic");
@@ -45,8 +45,16 @@ describe("generator edits", () => {
       includeHumansTxt: true
     });
     const indexHtml = await fs.readFile(path.join(result.siteDir, "index.html"), "utf8");
+    const privacyHtml = await fs.readFile(path.join(result.siteDir, "privacy.html"), "utf8");
 
     expect(indexHtml).toContain("Edited hero headline from builder");
+    expect(privacyHtml).toContain("Privacy Policy");
+    expect(privacyHtml).toContain("Information We Collect");
+    expect(privacyHtml).toContain("Cookies and Similar Technologies");
+    expect(privacyHtml).toContain("Contact Us");
+    expect(privacyHtml).toContain("[Insert business email]");
+    expect(privacyHtml).toContain("[Insert business phone]");
+    expect(privacyHtml).toContain("[Insert business address]");
 
     await fs.rm(path.join(generatedRoot, project.id), { recursive: true, force: true });
   });

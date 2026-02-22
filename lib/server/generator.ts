@@ -59,7 +59,7 @@ function buttonRadius(buttonStyle: "rounded" | "pill" | "square"): string {
 function buildNav(): string {
   const links = [
     ["index.html", "Home"],
-    ["services.html", "Services"],
+    ["services.html", "Products and Services"],
     ["about.html", "About"],
     ["contact.html", "Contact"],
     ["privacy.html", "Privacy"]
@@ -75,6 +75,7 @@ function schemaForPage(
   content: GeneratedContent,
   baseUrl: string,
   pageName: string,
+  pageFile: string,
   faqs: Array<{ question: string; answer: string }>
 ): string {
   const localBusiness = {
@@ -105,7 +106,7 @@ function schemaForPage(
         "@type": "ListItem",
         position: 2,
         name: pageName,
-        item: `${baseUrl}/${pageName.toLowerCase() === "home" ? "index.html" : `${pageName.toLowerCase()}.html`}`
+        item: `${baseUrl}/${pageFile}`
       }
     ]
   };
@@ -160,7 +161,7 @@ function renderLayout(
   <meta property="og:image" content="${escapeHtml(args.ogImage)}" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="stylesheet" href="assets/styles.css" />
-  ${schemaForPage(profile, content, baseUrl, args.pageName, args.faqs)}
+  ${schemaForPage(profile, content, baseUrl, args.pageName, args.pageFile, args.faqs)}
 </head>
 <body>
   <a href="#content" class="skip-link">Skip to content</a>
@@ -360,7 +361,7 @@ function sectionMarkup(
     case "quick_answers":
       return renderQuickAnswers(content);
     case "services":
-      return `<section class="panel"><h2>Services</h2><div class="card-grid">${content.services
+      return `<section class="panel"><h2>Products and Services</h2><div class="card-grid">${content.services
         .slice(0, 6)
         .map(
           (service) =>
@@ -415,6 +416,9 @@ main { padding: 1.4rem 0 2.5rem; display: grid; gap: 1.1rem; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 1.1rem; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05); }
 .hero { display: grid; grid-template-columns: 1.2fr .8fr; gap: 1rem; }
 .hero-image { width: 100%; height: 100%; min-height: 260px; object-fit: cover; border-radius: 14px; }
+.types-of-business h3 { margin-bottom: .5rem; }
+.chip-list { display: flex; flex-wrap: wrap; gap: .45rem; }
+.chip { display: inline-flex; align-items: center; border-radius: 999px; border: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 12%, #fff); padding: .18rem .62rem; font-size: .82rem; font-weight: 600; color: var(--text); }
 .quick-grid, .faq-grid, .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .8rem; }
 .card, .faq-item { border: 1px solid var(--border); border-radius: 12px; padding: .8rem; background: var(--surface); }
 .site-footer { border-top: 1px solid var(--border); padding: 1.3rem 0 2.2rem; }
@@ -482,7 +486,12 @@ export async function generateStaticSite(
 
   const pages: Array<{ name: string; file: string; body: string; path: string }> = [
     { name: "Home", file: "index.html", body: rendered.home, path: "/index.html" },
-    { name: "Services", file: "services.html", body: rendered.services, path: "/services.html" },
+    {
+      name: "Products and Services",
+      file: "services.html",
+      body: rendered.services,
+      path: "/services.html"
+    },
     { name: "About", file: "about.html", body: rendered.about, path: "/about.html" },
     { name: "Contact", file: "contact.html", body: rendered.contact, path: "/contact.html" },
     { name: "Privacy", file: "privacy.html", body: rendered.privacy, path: "/privacy.html" }

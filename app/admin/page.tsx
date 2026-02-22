@@ -44,15 +44,9 @@ import {
   updateProject,
   uploadProjectImage
 } from "@/lib/api";
-import {
-  arrayToCommaList,
-  arrayToTextLines,
-  commaListToArray,
-  createEmptyProfile,
-  hoursToText,
-  textLinesToArray,
-  textToHours
-} from "@/lib/profile";
+import { createEmptyProfile, hoursToText, textToHours } from "@/lib/profile";
+import { AppFooter } from "@/components/AppFooter";
+import { TokenInput } from "@/components/TokenInput";
 
 type Toast = { tone: "success" | "error" | "info"; message: string };
 type TabId = "source" | "themes" | "layout" | "editor" | "compliance";
@@ -935,19 +929,30 @@ export default function HomePage() {
                   </div>
 
                   <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="label" htmlFor="categories">Categories (comma separated)</label>
-                      <input id="categories" className="input" value={arrayToCommaList(profile.categories)} onChange={(event) => updateSourceProfile({ categories: commaListToArray(event.target.value) })} />
-                    </div>
-                    <div>
-                      <label className="label" htmlFor="areas">Service areas (comma separated)</label>
-                      <input id="areas" className="input" value={arrayToCommaList(profile.serviceAreas)} onChange={(event) => updateSourceProfile({ serviceAreas: commaListToArray(event.target.value) })} />
-                    </div>
+                    <TokenInput
+                      id="types-of-business"
+                      label="Types of Business"
+                      values={profile.typesOfBusiness}
+                      onChange={(next) => updateSourceProfile({ typesOfBusiness: next })}
+                      placeholder="Type a business type and press Enter"
+                    />
+                    <TokenInput
+                      id="source-service-areas"
+                      label="Service Areas"
+                      values={profile.serviceAreas}
+                      onChange={(next) => updateSourceProfile({ serviceAreas: next })}
+                      placeholder="Type a city or region and press Enter"
+                    />
                   </div>
 
                   <div className="mt-3">
-                    <label className="label" htmlFor="services">Services (one per line)</label>
-                    <textarea id="services" className="input min-h-28" value={arrayToTextLines(profile.services)} onChange={(event) => updateSourceProfile({ services: textLinesToArray(event.target.value) })} />
+                    <TokenInput
+                      id="products-and-services"
+                      label="Products and Services"
+                      values={profile.productsAndServices}
+                      onChange={(next) => updateSourceProfile({ productsAndServices: next })}
+                      placeholder="Type a product or service and press Enter"
+                    />
                   </div>
 
                   <div className="mt-3 grid gap-4 md:grid-cols-2">
@@ -1170,17 +1175,17 @@ export default function HomePage() {
                     </div>
 
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">Services</p>
+                      <p className="text-sm font-semibold text-slate-900">Products and Services</p>
                       <div className="mt-2 grid gap-2">
                         {content.services.map((service, index) => (
                           <div key={`${service.name}-${index}`} className="rounded-xl border border-slate-200 p-3">
-                            <input className="input mb-2" placeholder="Service name" value={service.name} onChange={(event) => updateService(index, "name", event.target.value)} />
-                            <textarea className="input" placeholder="Service description" value={service.description} onChange={(event) => updateService(index, "description", event.target.value)} />
-                            <button className="button-secondary mt-2" type="button" onClick={() => removeService(index)}>Remove service</button>
+                            <input className="input mb-2" placeholder="Product or service name" value={service.name} onChange={(event) => updateService(index, "name", event.target.value)} />
+                            <textarea className="input" placeholder="Product or service description" value={service.description} onChange={(event) => updateService(index, "description", event.target.value)} />
+                            <button className="button-secondary mt-2" type="button" onClick={() => removeService(index)}>Remove item</button>
                           </div>
                         ))}
                       </div>
-                      <button className="button-secondary mt-2" type="button" onClick={() => updateContent({ services: [...content.services, { name: "", description: "" }] })}>Add service</button>
+                      <button className="button-secondary mt-2" type="button" onClick={() => updateContent({ services: [...content.services, { name: "", description: "" }] })}>Add item</button>
                     </div>
 
                     <div>
@@ -1207,8 +1212,13 @@ export default function HomePage() {
                         <input className="input" value={content.contact.address} onChange={(event) => updateContent({ contact: { address: event.target.value } })} />
                       </div>
                       <div>
-                        <label className="label">Service areas (comma separated)</label>
-                        <input className="input" value={arrayToCommaList(content.contact.serviceAreas)} onChange={(event) => updateContent({ contact: { serviceAreas: commaListToArray(event.target.value) } })} />
+                        <TokenInput
+                          id="editor-service-areas"
+                          label="Service Areas"
+                          values={content.contact.serviceAreas}
+                          onChange={(next) => updateContent({ contact: { serviceAreas: next } })}
+                          placeholder="Type a city or region and press Enter"
+                        />
                         <label className="label mt-2">Hours (format: Day: open-close)</label>
                         <textarea className="input min-h-28" value={hoursToText(content.contact.hours)} onChange={(event) => updateContent({ contact: { hours: textToHours(event.target.value) } })} />
                       </div>
@@ -1280,6 +1290,8 @@ export default function HomePage() {
           </aside>
         </section>
       )}
+
+      <AppFooter />
 
       {showResetConfirm ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">

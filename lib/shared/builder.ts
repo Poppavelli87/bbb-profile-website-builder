@@ -315,10 +315,10 @@ function serviceDescription(name: string): string {
 }
 
 export function createGeneratedContentFromProfile(profile: BusinessProfile): GeneratedContent {
-  const siteTitle = `${profile.name} | ${profile.categories[0] || "Local Services"}`;
+  const siteTitle = `${profile.name} | ${profile.typesOfBusiness[0] || "Local Business"}`;
   const metaDescription =
     profile.description || profile.about || "Local business website generated from provided business details.";
-  const services = profile.services.map((service) => ({
+  const services = profile.productsAndServices.map((service) => ({
     name: service,
     description: serviceDescription(service)
   }));
@@ -331,8 +331,10 @@ export function createGeneratedContentFromProfile(profile: BusinessProfile): Gen
         ? faqs.slice(0, 3)
         : [
             {
-              question: "What services do you offer?",
-              answer: services.slice(0, 4).map((service) => service.name).join(", ") || "Contact us for service details."
+              question: "What products and services do you offer?",
+              answer:
+                services.slice(0, 4).map((service) => service.name).join(", ") ||
+                "Contact us for product and service details."
             },
             {
               question: "Which areas do you serve?",
@@ -424,7 +426,7 @@ export function suggestLayout(profile: BusinessProfile, content?: GeneratedConte
   }
 
   if (servicesCount >= 6) {
-    reasons.push("Six or more services found, so the Services section should stay prominent.");
+    reasons.push("Six or more offerings were found, so the Products and Services section should stay prominent.");
     sectionToggles.services = true;
   }
 
@@ -486,7 +488,7 @@ export function toComplianceProfile(profile: BusinessProfile, content: Generated
     slug: profile.slug || profile.name.toLowerCase().replace(/\s+/g, "-"),
     description: content.metaDescription || content.heroSubheadline,
     about: content.aboutText,
-    services: content.services.map((service) => service.name),
+    productsAndServices: content.services.map((service) => service.name),
     faqs: content.faqs,
     quickAnswers: content.quickAnswers,
     contact: {
