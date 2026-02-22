@@ -1,0 +1,11 @@
+﻿node_modules
+**/node_modules
+.git
+.next
+coverage
+playwright-report
+test-results
+apps/api/storage
+apps/api/uploads
+apps/api/generated
+*.log

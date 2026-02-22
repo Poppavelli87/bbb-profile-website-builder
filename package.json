@@ -1,0 +1,24 @@
+{
+  "name": "bbb-profile-website-builder",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build -w @bbb/shared && concurrently \"npm run dev -w @bbb/api\" \"npm run dev -w @bbb/web\"",
+    "build": "npm run build -w @bbb/shared && npm run build -w @bbb/api && npm run build -w @bbb/web",
+    "start": "concurrently \"npm run start -w @bbb/api\" \"npm run start -w @bbb/web\"",
+    "lint": "npm run lint -w @bbb/shared && npm run lint -w @bbb/api && npm run lint -w @bbb/web",
+    "typecheck": "npm run build -w @bbb/shared && npm run typecheck -w @bbb/shared && npm run typecheck -w @bbb/api && npm run typecheck -w @bbb/web",
+    "test": "npm run build -w @bbb/shared && npm run test -w @bbb/shared && npm run test -w @bbb/api && npm run test -w @bbb/web",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "concurrently": "^9.1.2",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  }
+}
