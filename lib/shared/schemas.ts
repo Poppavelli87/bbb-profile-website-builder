@@ -109,6 +109,15 @@ export const businessProfileSchema = z.object({
   privacyNotes: z.string().default("")
 });
 
+export const siteDefinitionSchema = z.object({
+  profile: businessProfileSchema,
+  theme: themeSchema,
+  layout: layoutSchema,
+  sections: z.array(sectionSchema),
+  content: generatedContentSchema,
+  substantiationNotes: z.record(z.string()).default({})
+});
+
 export const complianceIssueSchema = z.object({
   id: z.string(),
   field: z.string(),
@@ -179,6 +188,68 @@ export const generateProjectSchema = z.object({
   includeHumansTxt: z.boolean().default(true)
 });
 
+export const siteStatusSchema = z.enum(["draft", "published", "archived"]);
+export const siteTierSchema = z.enum(["free", "premium", "pro"]);
+
+export const siteSchema = z.object({
+  id: z.string().uuid(),
+  slug: z.string().min(1),
+  businessName: z.string().min(1),
+  status: siteStatusSchema.default("draft"),
+  tier: siteTierSchema.default("free"),
+  siteDefinitionJson: siteDefinitionSchema,
+  complianceJson: complianceSummarySchema.optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  publishedAt: z.string().optional(),
+  createdBy: z.string().optional()
+});
+
+export const siteIndexItemSchema = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  businessName: z.string(),
+  status: siteStatusSchema,
+  tier: siteTierSchema,
+  updatedAt: z.string(),
+  publishedAt: z.string().optional()
+});
+
+export const adminSiteQuerySchema = z.object({
+  search: z.string().optional(),
+  status: siteStatusSchema.optional(),
+  tier: siteTierSchema.optional()
+});
+
+export const createSiteSchema = z.object({
+  slug: z.string().min(1),
+  businessName: z.string().min(1),
+  tier: siteTierSchema.default("free"),
+  siteDefinitionJson: siteDefinitionSchema,
+  complianceJson: complianceSummarySchema.optional(),
+  createdBy: z.string().optional()
+});
+
+export const updateSiteSchema = z.object({
+  slug: z.string().min(1).optional(),
+  businessName: z.string().min(1).optional(),
+  tier: siteTierSchema.optional(),
+  status: siteStatusSchema.optional(),
+  siteDefinitionJson: siteDefinitionSchema.optional(),
+  complianceJson: complianceSummarySchema.optional(),
+  createdBy: z.string().optional()
+});
+
+export const publishSiteSchema = z.object({
+  slug: z.string().min(1),
+  businessName: z.string().min(1),
+  tier: siteTierSchema.default("free"),
+  siteDefinitionJson: siteDefinitionSchema,
+  complianceJson: complianceSummarySchema.optional(),
+  createdBy: z.string().optional(),
+  force: z.boolean().optional().default(false)
+});
+
 export type ExtractionMode = z.infer<typeof extractionModeSchema>;
 export type Contact = z.infer<typeof contactSchema>;
 export type ImageAsset = z.infer<typeof imageAssetSchema>;
@@ -191,7 +262,12 @@ export type ProjectLayout = z.infer<typeof layoutSchema>;
 export type ProjectSection = z.infer<typeof sectionSchema>;
 export type GeneratedService = z.infer<typeof generatedServiceSchema>;
 export type GeneratedContent = z.infer<typeof generatedContentSchema>;
+export type SiteDefinition = z.infer<typeof siteDefinitionSchema>;
 export type BusinessProfile = z.infer<typeof businessProfileSchema>;
 export type ComplianceIssue = z.infer<typeof complianceIssueSchema>;
 export type ComplianceSummary = z.infer<typeof complianceSummarySchema>;
 export type ProjectRecord = z.infer<typeof projectSchema>;
+export type SiteStatus = z.infer<typeof siteStatusSchema>;
+export type SiteTier = z.infer<typeof siteTierSchema>;
+export type SiteRecord = z.infer<typeof siteSchema>;
+export type SiteIndexItem = z.infer<typeof siteIndexItemSchema>;

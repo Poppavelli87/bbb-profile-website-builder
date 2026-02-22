@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { put } from "@vercel/blob";
 import type { ImageAsset } from "@/lib/shared";
 import { safeResolve, uploadsRoot } from "./paths";
 
@@ -21,11 +22,26 @@ export async function saveUploadedImage(
 ): Promise<ImageAsset> {
   const ext = extensionFromMime(mimeType);
   const fileName = `${randomUUID()}.${ext}`;
+
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const blob = await put(`uploads/${projectId}/${fileName}`, fileBuffer, {
+      access: "public",
+      contentType: mimeType || undefined,
+      addRandomSuffix: false
+    });
+    return {
+      id: randomUUID(),
+      source: "uploaded",
+      url: blob.url,
+      alt: altText,
+      selectedHero: false
+    };
+  }
+
   const targetDir = safeResolve(uploadsRoot, projectId);
   if (!targetDir) {
     throw new Error("Invalid upload path.");
   }
-
   await fs.mkdir(targetDir, { recursive: true });
   await fs.writeFile(path.join(targetDir, fileName), fileBuffer);
 

@@ -15,6 +15,7 @@ import {
   type SectionId
 } from "@/lib/shared";
 import { generatedRoot, safeResolve, uploadsRoot } from "./paths";
+import { renderFromModelToHTML } from "./render-from-model";
 
 export type GenerationOptions = {
   includeLlmsTxt: boolean;
@@ -472,24 +473,19 @@ export async function generateStaticSite(
   await fs.writeFile(path.join(siteDir, "assets", "styles.css"), styles(themeCss, buttonRadius(buttonStyle)), "utf8");
   await fs.writeFile(path.join(siteDir, "assets", "site.js"), script(Boolean(profile.privacyTrackerOptIn)), "utf8");
 
-  const homeBody = renderHomeBody(profile, content, sections, images);
-  const servicesBody = `<section class="panel"><h2>Our Services</h2><div class="card-grid">${content.services
-    .map(
-      (service) =>
-        `<article class="card"><h3>${escapeHtml(service.name)}</h3><p>${escapeHtml(service.description || "Request a tailored quote for this service.")}</p></article>`
-    )
-    .join("") || "<p>Services available upon request.</p>"}</div></section>`;
-
-  const aboutBody = `<section class="panel"><h2>About ${escapeHtml(profile.name)}</h2><p>${escapeHtml(content.aboutText || content.metaDescription)}</p></section>`;
-  const contactBody = `<section class="panel"><h2>Contact</h2>${renderContact(content)}</section><section class="panel"><h2>Hours</h2>${hoursTable(content.contact.hours || {})}</section><section class="panel"><h2>Service Areas</h2><p>${escapeHtml(content.contact.serviceAreas.join(", ") || "Contact us to confirm service area coverage.")}</p></section>`;
-  const privacyBody = `<section class="panel"><h2>Privacy Policy</h2><p>We use essential cookies by default. Optional analytics remains off until explicit opt-in.</p><p>No third-party trackers are enabled by default.</p><p>${profile.privacyTrackerOptIn ? "Analytics hooks may run only after user consent." : "Analytics is disabled until opt-in."}</p><p>${escapeHtml(profile.privacyNotes || "Contact us for privacy requests and data handling questions.")}</p></section>`;
+  const rendered = renderFromModelToHTML({
+    profile,
+    content,
+    sections,
+    images
+  });
 
   const pages: Array<{ name: string; file: string; body: string; path: string }> = [
-    { name: "Home", file: "index.html", body: homeBody, path: "/index.html" },
-    { name: "Services", file: "services.html", body: servicesBody, path: "/services.html" },
-    { name: "About", file: "about.html", body: aboutBody, path: "/about.html" },
-    { name: "Contact", file: "contact.html", body: contactBody, path: "/contact.html" },
-    { name: "Privacy", file: "privacy.html", body: privacyBody, path: "/privacy.html" }
+    { name: "Home", file: "index.html", body: rendered.home, path: "/index.html" },
+    { name: "Services", file: "services.html", body: rendered.services, path: "/services.html" },
+    { name: "About", file: "about.html", body: rendered.about, path: "/about.html" },
+    { name: "Contact", file: "contact.html", body: rendered.contact, path: "/contact.html" },
+    { name: "Privacy", file: "privacy.html", body: rendered.privacy, path: "/privacy.html" }
   ];
 
   for (const page of pages) {
