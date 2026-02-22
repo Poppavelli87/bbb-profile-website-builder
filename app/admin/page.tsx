@@ -29,6 +29,7 @@ import {
   initialBuilderState,
   type BuilderPresent
 } from "@/lib/builder/reducer";
+import { getPreviewPanelState } from "@/lib/builder/preview";
 import {
   archiveAdminSite,
   createAdminSite,
@@ -111,6 +112,7 @@ export default function HomePage() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [fallbackSuggestions, setFallbackSuggestions] = useState<string[]>([]);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [hasGeneratedPreview, setHasGeneratedPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [syncingPreview, setSyncingPreview] = useState(false);
   const [autoRenderEnabled, setAutoRenderEnabled] = useState(false);
@@ -135,7 +137,7 @@ export default function HomePage() {
   const present = builderState.present;
   const profile = present.profile;
   const content = present.content;
-  const editorUnlocked = builderState.status !== "draft" || autoRenderEnabled || Boolean(previewUrl);
+  const editorUnlocked = builderState.status !== "draft" || autoRenderEnabled || hasGeneratedPreview;
 
   const themeResolved = useMemo(() => resolveTheme(present.theme), [present.theme]);
   const contrast = useMemo(() => contrastRatio(themeResolved.vars.text, themeResolved.vars.bg), [themeResolved]);
@@ -170,6 +172,10 @@ export default function HomePage() {
       sections: present.sections
     });
   }, [profile, content, present.theme, present.layout, present.sections]);
+  const previewPanelState = useMemo(
+    () => getPreviewPanelState(hasGeneratedPreview, previewUrl),
+    [hasGeneratedPreview, previewUrl]
+  );
 
   function applyEdit(updater: (current: BuilderPresent) => BuilderPresent) {
     const next = updater(present);
@@ -257,6 +263,7 @@ export default function HomePage() {
     const id = await persistProject(status);
     const rendered = await renderProject(id, status);
     setPreviewUrl(`${getApiBase()}${rendered.previewUrl}`);
+    setHasGeneratedPreview(true);
     return id;
   }
 
@@ -282,6 +289,7 @@ export default function HomePage() {
             return;
           }
           setPreviewUrl(`${getApiBase()}${rendered.previewUrl}`);
+          setHasGeneratedPreview(true);
         } catch (error) {
           if (sequence !== renderSequence.current) {
             return;
@@ -307,6 +315,8 @@ export default function HomePage() {
     if (!siteIdFromQuery) {
       return;
     }
+    setPreviewUrl("");
+    setHasGeneratedPreview(false);
     void (async () => {
       try {
         setBusy(true);
@@ -341,6 +351,7 @@ export default function HomePage() {
     setSiteTier("free");
     setPublishedLiveUrl("");
     setPreviewUrl("");
+    setHasGeneratedPreview(false);
     setAutoRenderEnabled(false);
     dispatch({ type: "reset" });
 
@@ -690,6 +701,7 @@ export default function HomePage() {
       setSiteTier("free");
       setPublishedLiveUrl("");
       setPreviewUrl("");
+      setHasGeneratedPreview(false);
       setAutoRenderEnabled(false);
       setFallbackSuggestions([]);
       setActiveTab("source");
@@ -1280,12 +1292,19 @@ export default function HomePage() {
               <p className="text-sm font-semibold text-slate-900">Preview</p>
               <button className="button-primary" type="button" onClick={() => void handleGenerateSite()} disabled={busy}>Generate Site</button>
             </div>
-            {previewUrl ? (
+            {previewPanelState.mode === "iframe" ? (
               <div className="overflow-hidden rounded-xl border border-slate-300">
-                <iframe src={previewUrl} className="h-[680px] w-full" title="Generated site preview" loading="lazy" />
+                <iframe
+                  src={previewPanelState.src}
+                  className="h-[680px] w-full"
+                  title="Generated site preview"
+                  loading="lazy"
+                />
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-600">Generate the site to see a live preview.</div>
+              <div className="rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-600">
+                {previewPanelState.message}
+              </div>
             )}
           </aside>
         </section>

@@ -19,11 +19,13 @@ describe("generator edits", () => {
     profile.slug = "edited-headline-co";
     profile.productsAndServices = ["Roof repair"];
     profile.description = "Original description";
+    profile.about = "Source about text should not override edited content";
 
     const layout = applyLayoutPreset("local-service-classic");
     const content = normalizeGeneratedContent(profile, {
       ...normalizeGeneratedContent(profile),
-      heroHeadline: "Edited hero headline from builder"
+      heroHeadline: "Edited hero headline from builder",
+      aboutText: "Edited About content from the editor."
     });
     const compliance = runComplianceChecks(toComplianceProfile(profile, content));
 
@@ -45,9 +47,13 @@ describe("generator edits", () => {
       includeHumansTxt: true
     });
     const indexHtml = await fs.readFile(path.join(result.siteDir, "index.html"), "utf8");
+    const aboutHtml = await fs.readFile(path.join(result.siteDir, "about.html"), "utf8");
     const privacyHtml = await fs.readFile(path.join(result.siteDir, "privacy.html"), "utf8");
 
     expect(indexHtml).toContain("Edited hero headline from builder");
+    expect(indexHtml).toContain("Edited About content from the editor.");
+    expect(indexHtml).not.toContain("Source about text should not override edited content");
+    expect(aboutHtml).toContain("Edited About content from the editor.");
     expect(privacyHtml).toContain("Privacy Policy");
     expect(privacyHtml).toContain("Information We Collect");
     expect(privacyHtml).toContain("Cookies and Similar Technologies");
