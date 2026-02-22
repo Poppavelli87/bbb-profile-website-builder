@@ -1,5 +1,11 @@
 import path from "path";
-import { generateProjectSchema, runComplianceChecks, type ProjectRecord } from "@/lib/shared";
+import {
+  generateProjectSchema,
+  normalizeGeneratedContent,
+  runComplianceChecks,
+  toComplianceProfile,
+  type ProjectRecord
+} from "@/lib/shared";
 import type { z } from "zod";
 import { zipDirectory } from "./archive";
 import { generateStaticSite } from "./generator";
@@ -30,14 +36,16 @@ export async function runGenerationJob(
       throw new Error("Project not found during generation.");
     }
 
-    const compliance = runComplianceChecks(project.profile);
-    const generated = await generateStaticSite(project, compliance, options);
+    const content = normalizeGeneratedContent(project.profile, project.content);
+    const compliance = runComplianceChecks(toComplianceProfile(project.profile, content));
+    const generated = await generateStaticSite({ ...project, content }, compliance, options);
     const zipPath = path.join(generatedRoot, project.id, `${generated.slug}.zip`);
     await zipDirectory(generated.siteDir, zipPath);
 
     const nextProject: ProjectRecord = {
       ...project,
       status: "generated",
+      content,
       compliance,
       generationPath: generated.siteDir,
       zipPath,
