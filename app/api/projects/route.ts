@@ -1,6 +1,13 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-import { createProjectSchema, createSlug, projectSchema } from "@/lib/shared";
+import {
+  applyLayoutPreset,
+  createProjectSchema,
+  createSlug,
+  normalizeGeneratedContent,
+  normalizeTheme,
+  projectSchema
+} from "@/lib/shared";
 import { ensureRuntimeDirs } from "@/lib/server/paths";
 import { listProjects, saveProject } from "@/lib/server/storage";
 
@@ -31,12 +38,20 @@ export async function POST(request: Request) {
     ...parsed.data.profile,
     slug: createSlug(parsed.data.profile.slug || parsed.data.profile.name)
   };
+  const layout = applyLayoutPreset("local-service-classic");
+  const theme = normalizeTheme();
+  const content = normalizeGeneratedContent(profile);
   const project = projectSchema.parse({
     id: randomUUID(),
     createdAt: now,
     updatedAt: now,
     status: "draft",
-    profile
+    profile,
+    theme,
+    layout: layout.layout,
+    sections: layout.sections,
+    content,
+    substantiationNotes: {}
   });
 
   await saveProject(project);

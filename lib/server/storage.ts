@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import type { ProjectRecord } from "@/lib/shared";
 import { ensureRuntimeDirs, projectStorageDir } from "./paths";
+import { hydrateProject } from "./project";
 
 function projectFile(projectId: string): string {
   return path.join(projectStorageDir, `${projectId}.json`);
@@ -16,7 +17,7 @@ export async function getProject(projectId: string): Promise<ProjectRecord | nul
   ensureRuntimeDirs();
   try {
     const raw = await fs.readFile(projectFile(projectId), "utf8");
-    return JSON.parse(raw) as ProjectRecord;
+    return hydrateProject(JSON.parse(raw) as ProjectRecord);
   } catch {
     return null;
   }
@@ -44,11 +45,16 @@ export async function listProjects(): Promise<ProjectRecord[]> {
         .filter((file) => file.endsWith(".json"))
         .map(async (file) => {
           const raw = await fs.readFile(path.join(projectStorageDir, file), "utf8");
-          return JSON.parse(raw) as ProjectRecord;
+          return hydrateProject(JSON.parse(raw) as ProjectRecord);
         })
     );
     return projects.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   } catch {
     return [];
   }
+}
+
+export async function deleteProjectFile(projectId: string): Promise<void> {
+  ensureRuntimeDirs();
+  await fs.rm(projectFile(projectId), { force: true });
 }

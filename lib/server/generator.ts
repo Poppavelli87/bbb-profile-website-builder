@@ -1,7 +1,19 @@
 import fs from "fs/promises";
 import path from "path";
-import type { BusinessProfile, ComplianceSummary, ProjectRecord } from "@/lib/shared";
-import { createSlug } from "@/lib/shared";
+import {
+  DEFAULT_LAYOUT_ID,
+  createSlug,
+  normalizeGeneratedContent,
+  normalizeSections,
+  resolveTheme,
+  themeVarsToCss,
+  type BusinessProfile,
+  type ComplianceSummary,
+  type GeneratedContent,
+  type ProjectRecord,
+  type ProjectSection,
+  type SectionId
+} from "@/lib/shared";
 import { generatedRoot, safeResolve, uploadsRoot } from "./paths";
 
 export type GenerationOptions = {
@@ -37,15 +49,13 @@ function truncate(input: string, max: number): string {
   return `${input.slice(0, max - 3).trim()}...`;
 }
 
-function extFromContentType(contentType: string): string {
-  if (contentType.includes("png")) return "png";
-  if (contentType.includes("gif")) return "gif";
-  if (contentType.includes("webp")) return "webp";
-  if (contentType.includes("svg")) return "svg";
-  return "jpg";
+function buttonRadius(buttonStyle: "rounded" | "pill" | "square"): string {
+  if (buttonStyle === "pill") return "999px";
+  if (buttonStyle === "square") return "2px";
+  return "12px";
 }
 
-function buildNav(includeTestimonials: boolean): string {
+function buildNav(): string {
   const links = [
     ["index.html", "Home"],
     ["services.html", "Services"],
@@ -54,10 +64,6 @@ function buildNav(includeTestimonials: boolean): string {
     ["privacy.html", "Privacy"]
   ];
 
-  if (includeTestimonials) {
-    links.splice(3, 0, ["testimonials.html", "Reviews"]);
-  }
-
   return links
     .map(([href, label]) => `<a href="${href}" class="nav-link">${escapeHtml(label)}</a>`)
     .join("\n");
@@ -65,6 +71,7 @@ function buildNav(includeTestimonials: boolean): string {
 
 function schemaForPage(
   profile: BusinessProfile,
+  content: GeneratedContent,
   baseUrl: string,
   pageName: string,
   faqs: Array<{ question: string; answer: string }>
@@ -73,12 +80,12 @@ function schemaForPage(
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: profile.name,
-    description: profile.description,
+    description: content.metaDescription,
     url: baseUrl,
-    telephone: profile.contact.phone || undefined,
-    email: profile.contact.email || undefined,
-    address: profile.contact.address || undefined,
-    areaServed: profile.serviceAreas
+    telephone: content.contact.phone || undefined,
+    email: content.contact.email || undefined,
+    address: content.contact.address || undefined,
+    areaServed: content.contact.serviceAreas
   };
 
   const website = {
@@ -123,18 +130,19 @@ function schemaForPage(
 
 function renderLayout(
   profile: BusinessProfile,
+  content: GeneratedContent,
   args: {
     title: string;
     description: string;
     body: string;
     pageName: string;
-    includeTestimonials: boolean;
+    pageFile: string;
     faqs: Array<{ question: string; answer: string }>;
+    ogImage: string;
   }
 ): string {
-  const baseUrl = profile.contact.website || `https://example.com/${profile.slug}`;
-  const canonical = `${baseUrl}/${args.pageName.toLowerCase() === "home" ? "index.html" : `${args.pageName.toLowerCase()}.html`}`;
-  const ogImage = profile.images?.[0]?.url || `${baseUrl}/assets/images/placeholder.svg`;
+  const baseUrl = content.contact.website || profile.contact.website || `https://example.com/${profile.slug}`;
+  const canonical = `${baseUrl}/${args.pageFile}`;
 
   return `<!doctype html>
 <html lang="en">
@@ -148,10 +156,10 @@ function renderLayout(
   <meta property="og:title" content="${escapeHtml(args.title)}" />
   <meta property="og:description" content="${escapeHtml(truncate(args.description, 200))}" />
   <meta property="og:url" content="${escapeHtml(canonical)}" />
-  <meta property="og:image" content="${escapeHtml(ogImage)}" />
+  <meta property="og:image" content="${escapeHtml(args.ogImage)}" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="stylesheet" href="assets/styles.css" />
-  ${schemaForPage(profile, baseUrl, args.pageName, args.faqs)}
+  ${schemaForPage(profile, content, baseUrl, args.pageName, args.faqs)}
 </head>
 <body>
   <a href="#content" class="skip-link">Skip to content</a>
@@ -161,7 +169,7 @@ function renderLayout(
         <p class="eyebrow">Privacy-first local website</p>
         <h1>${escapeHtml(profile.name)}</h1>
       </div>
-      <nav aria-label="Primary" class="nav">${buildNav(args.includeTestimonials)}</nav>
+      <nav aria-label="Primary" class="nav">${buildNav()}</nav>
     </div>
   </header>
 
@@ -236,7 +244,7 @@ async function materializeImages(
   const imageDir = path.join(siteDir, "assets", "images");
   await fs.mkdir(imageDir, { recursive: true });
 
-  const placeholder = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-label="Placeholder"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e7f5ff"/><stop offset="1" stop-color="#d3f9d8"/></linearGradient></defs><rect width="1200" height="700" fill="url(#g)"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-family="Segoe UI, sans-serif" font-size="48" fill="#1f2937">Business Photo Placeholder</text></svg>`;
+  const placeholder = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-label="Placeholder"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#dbeafe"/><stop offset="1" stop-color="#ecfeff"/></linearGradient></defs><rect width="1200" height="700" fill="url(#g)"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-family="Segoe UI, sans-serif" font-size="48" fill="#0f172a">Business Photo Placeholder</text></svg>`;
   await fs.writeFile(path.join(imageDir, "placeholder.svg"), placeholder, "utf8");
 
   const collected: LocalImage[] = [];
@@ -270,21 +278,11 @@ async function materializeImages(
   return collected;
 }
 
-function renderQuickAnswers(profile: BusinessProfile): string {
-  const quickAnswers =
-    profile.quickAnswers.length > 0
-      ? profile.quickAnswers
-      : [
-          {
-            question: "What services do you offer?",
-            answer: profile.services.slice(0, 4).join(", ") || "See our services page for a complete list."
-          },
-          {
-            question: "Where do you provide service?",
-            answer: profile.serviceAreas.join(", ") || "Contact us to confirm service availability in your area."
-          }
-        ];
-
+function renderQuickAnswers(content: GeneratedContent): string {
+  const quickAnswers = content.quickAnswers || [];
+  if (quickAnswers.length === 0) {
+    return "";
+  }
   return `<section class="panel quick-answers" aria-labelledby="quick-answers-heading">
   <h2 id="quick-answers-heading">Quick answers</h2>
   <div class="quick-grid">
@@ -308,6 +306,9 @@ function renderFaqList(faqs: Array<{ question: string; answer: string }>): strin
 }
 
 function renderGallery(images: LocalImage[]): string {
+  if (images.length === 0) {
+    return "";
+  }
   return `<section class="panel"><h2>Gallery</h2><div class="card-grid">
     ${images
       .map((image) => `<figure class="card"><img src="${image.src}" alt="${escapeHtml(image.alt)}" class="hero-image" /></figure>`)
@@ -315,34 +316,112 @@ function renderGallery(images: LocalImage[]): string {
   </div></section>`;
 }
 
-function styles(): string {
-  return `:root { color-scheme: light; --bg: #f8fafc; --surface: #fff; --text: #102a43; --muted: #486581; --brand: #0f766e; --brand-2: #0c4a6e; --border: #d9e2ec; }
+function hoursTable(hours: Record<string, string>): string {
+  const entries = Object.entries(hours || {});
+  if (entries.length === 0) {
+    return "<p>Hours available on request.</p>";
+  }
+  return `<table><thead><tr><th scope="col">Day</th><th scope="col">Hours</th></tr></thead><tbody>${entries
+    .map(([day, value]) => `<tr><th scope="row">${escapeHtml(day)}</th><td>${escapeHtml(value)}</td></tr>`)
+    .join("")}</tbody></table>`;
+}
+
+function renderContact(content: GeneratedContent): string {
+  return `<ul>
+    <li><strong>Phone:</strong> ${escapeHtml(content.contact.phone || "Available on request")}</li>
+    <li><strong>Email:</strong> ${escapeHtml(content.contact.email || "Available on request")}</li>
+    <li><strong>Website:</strong> ${
+      content.contact.website
+        ? `<a href="${escapeHtml(content.contact.website)}">${escapeHtml(content.contact.website)}</a>`
+        : "Available on request"
+    }</li>
+    <li><strong>Address:</strong> ${escapeHtml(content.contact.address || "Available on request")}</li>
+  </ul>`;
+}
+
+function sectionMarkup(
+  sectionId: SectionId,
+  profile: BusinessProfile,
+  content: GeneratedContent,
+  images: LocalImage[]
+): string {
+  const hero = images.find((image) => image.hero) || images[0];
+  switch (sectionId) {
+    case "hero":
+      return `<section class="panel hero">
+  <article>
+    <h2>${escapeHtml(content.heroHeadline || profile.name)}</h2>
+    <p>${escapeHtml(content.heroSubheadline || content.metaDescription)}</p>
+    <p><a class="button" href="contact.html">${escapeHtml(content.heroCtaText || "Contact Us")}</a></p>
+  </article>
+  <figure><img src="${hero.src}" alt="${escapeHtml(hero.alt)}" class="hero-image" /></figure>
+</section>`;
+    case "quick_answers":
+      return renderQuickAnswers(content);
+    case "services":
+      return `<section class="panel"><h2>Services</h2><div class="card-grid">${content.services
+        .slice(0, 6)
+        .map(
+          (service) =>
+            `<article class="card"><h3>${escapeHtml(service.name)}</h3><p>${escapeHtml(service.description || "Request a tailored quote for this service.")}</p></article>`
+        )
+        .join("")}</div></section>`;
+    case "about":
+      return `<section class="panel"><h2>About ${escapeHtml(profile.name)}</h2><p>${escapeHtml(content.aboutText || content.metaDescription)}</p></section>`;
+    case "service_areas":
+      return `<section class="panel"><h2>Service Areas</h2><p>${escapeHtml(content.contact.serviceAreas.join(", ") || "Contact us to confirm service coverage.")}</p></section>`;
+    case "faq":
+      return renderFaqList(content.faqs || []);
+    case "hours":
+      return `<section class="panel"><h2>Business Hours</h2>${hoursTable(content.contact.hours || {})}</section>`;
+    case "contact":
+      return `<section class="panel"><h2>Contact</h2>${renderContact(content)}</section>`;
+    case "gallery":
+      return renderGallery(images.slice(0, 6));
+    default:
+      return "";
+  }
+}
+
+function renderHomeBody(
+  profile: BusinessProfile,
+  content: GeneratedContent,
+  sections: ProjectSection[],
+  images: LocalImage[]
+): string {
+  return sections
+    .filter((section) => section.enabled)
+    .map((section) => sectionMarkup(section.id, profile, content, images))
+    .filter(Boolean)
+    .join("\n");
+}
+
+function styles(themeCss: string, currentButtonRadius: string): string {
+  return `:root { color-scheme: light; ${themeCss} --button-radius: ${currentButtonRadius}; }
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: radial-gradient(circle at top right, #dbeafe, #f8fafc 55%); color: var(--text); line-height: 1.55; }
-a { color: var(--brand-2); text-decoration-thickness: .08em; text-underline-offset: .12em; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 18%, var(--bg)), var(--bg) 55%); color: var(--text); line-height: 1.55; }
+a { color: var(--secondary); text-decoration-thickness: .08em; text-underline-offset: .12em; }
 .container { width: min(1080px, 92vw); margin: 0 auto; }
 .skip-link { position: absolute; left: -9999px; }
-.skip-link:focus { left: 1rem; top: 1rem; background: #fff; padding: .5rem .8rem; border: 2px solid var(--brand); }
+.skip-link:focus { left: 1rem; top: 1rem; background: #fff; padding: .5rem .8rem; border: 2px solid var(--primary); }
 .site-header { padding: 2.2rem 0 1.3rem; border-bottom: 1px solid var(--border); }
 .header-grid { display: flex; gap: 1rem; justify-content: space-between; align-items: end; flex-wrap: wrap; }
 .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: .08em; font-size: .76rem; color: var(--muted); }
 .nav { display: flex; gap: .9rem; flex-wrap: wrap; }
 .nav-link { color: var(--text); text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: .2rem; }
-.nav-link:hover, .nav-link:focus { border-bottom-color: var(--brand); }
+.nav-link:hover, .nav-link:focus { border-bottom-color: var(--primary); }
 main { padding: 1.4rem 0 2.5rem; display: grid; gap: 1.1rem; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 1.1rem; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05); }
 .hero { display: grid; grid-template-columns: 1.2fr .8fr; gap: 1rem; }
 .hero-image { width: 100%; height: 100%; min-height: 260px; object-fit: cover; border-radius: 14px; }
-.badge-list { display: flex; flex-wrap: wrap; gap: .5rem; }
-.badge { display: inline-flex; background: #e0f2fe; border: 1px solid #bae6fd; color: #0c4a6e; border-radius: 999px; padding: .2rem .6rem; font-size: .82rem; }
 .quick-grid, .faq-grid, .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .8rem; }
-.card, .faq-item { border: 1px solid var(--border); border-radius: 12px; padding: .8rem; background: #fff; }
+.card, .faq-item { border: 1px solid var(--border); border-radius: 12px; padding: .8rem; background: var(--surface); }
 .site-footer { border-top: 1px solid var(--border); padding: 1.3rem 0 2.2rem; }
 .footer-grid { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .8rem; }
-.button { background: var(--brand); color: #fff; border: none; border-radius: 999px; padding: .55rem 1rem; cursor: pointer; font-weight: 600; }
+.button { display: inline-flex; background: var(--primary); color: #fff; border: none; border-radius: var(--button-radius); padding: .55rem 1rem; cursor: pointer; font-weight: 600; text-decoration: none; }
 .button:hover { filter: brightness(1.05); }
 .button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
-.cookie-banner { position: fixed; right: 1rem; left: 1rem; bottom: 1rem; background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: .9rem; box-shadow: 0 20px 35px rgba(15, 23, 42, .12); display: none; gap: .8rem; align-items: center; justify-content: space-between; flex-wrap: wrap; z-index: 40; }
+.cookie-banner { position: fixed; right: 1rem; left: 1rem; bottom: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: .9rem; box-shadow: 0 20px 35px rgba(15, 23, 42, .12); display: none; gap: .8rem; align-items: center; justify-content: space-between; flex-wrap: wrap; z-index: 40; }
 .cookie-banner.visible { display: flex; }
 .cookie-actions { display: flex; gap: .6rem; }
 .cookie-dialog { border: 1px solid var(--border); border-radius: 14px; width: min(520px, 94vw); }
@@ -371,22 +450,15 @@ function script(defaultAnalyticsOptIn: boolean): string {
 })();`;
 }
 
-function hoursTable(hours: Record<string, string>): string {
-  const entries = Object.entries(hours || {});
-  if (entries.length === 0) {
-    return "<p>Hours available on request.</p>";
-  }
-  return `<table><thead><tr><th scope="col">Day</th><th scope="col">Hours</th></tr></thead><tbody>${entries
-    .map(([day, value]) => `<tr><th scope="row">${escapeHtml(day)}</th><td>${escapeHtml(value)}</td></tr>`)
-    .join("")}</tbody></table>`;
-}
-
 export async function generateStaticSite(
   project: ProjectRecord,
   compliance: ComplianceSummary,
   options: GenerationOptions
 ): Promise<GeneratedResult> {
   const profile = project.profile;
+  const content = normalizeGeneratedContent(profile, project.content);
+  const layout = project.layout || { presetId: DEFAULT_LAYOUT_ID };
+  const sections = normalizeSections(layout, project.sections);
   const slug = createSlug(profile.slug || profile.name);
   const siteDir = path.join(generatedRoot, project.id, slug);
   await fs.rm(siteDir, { recursive: true, force: true });
@@ -394,33 +466,22 @@ export async function generateStaticSite(
 
   const images = await materializeImages(project, profile, siteDir);
   const hero = images.find((image) => image.hero) || images[0];
-  const includeTestimonials = profile.testimonials.length > 0;
+  const { vars, buttonStyle } = resolveTheme(project.theme);
+  const themeCss = themeVarsToCss(vars);
 
-  await fs.writeFile(path.join(siteDir, "assets", "styles.css"), styles(), "utf8");
+  await fs.writeFile(path.join(siteDir, "assets", "styles.css"), styles(themeCss, buttonRadius(buttonStyle)), "utf8");
   await fs.writeFile(path.join(siteDir, "assets", "site.js"), script(Boolean(profile.privacyTrackerOptIn)), "utf8");
 
-  const homeBody = `<section class="panel hero">
-    <article>
-      <h2>Reliable local service for your home or business</h2>
-      <p>${escapeHtml(profile.description)}</p>
-      <div class="badge-list">${profile.categories.map((category) => `<span class="badge">${escapeHtml(category)}</span>`).join("")}</div>
-    </article>
-    <figure><img src="${hero.src}" alt="${escapeHtml(hero.alt)}" class="hero-image" /></figure>
-  </section>
-  ${renderQuickAnswers(profile)}
-  <section class="panel"><h2>Service Areas</h2><p>${escapeHtml(profile.serviceAreas.join(", ") || "Contact us to confirm service area coverage.")}</p></section>
-  ${renderFaqList(profile.faqs)}
-  ${renderGallery(images.slice(0, 6))}`;
-
-  const servicesBody = `<section class="panel"><h2>Our Services</h2><div class="card-grid">${profile.services
-    .map((service) => `<article class="card"><h3>${escapeHtml(service)}</h3><p>Request a quote tailored to your needs.</p></article>`)
+  const homeBody = renderHomeBody(profile, content, sections, images);
+  const servicesBody = `<section class="panel"><h2>Our Services</h2><div class="card-grid">${content.services
+    .map(
+      (service) =>
+        `<article class="card"><h3>${escapeHtml(service.name)}</h3><p>${escapeHtml(service.description || "Request a tailored quote for this service.")}</p></article>`
+    )
     .join("") || "<p>Services available upon request.</p>"}</div></section>`;
 
-  const aboutBody = `<section class="panel"><h2>About ${escapeHtml(profile.name)}</h2><p>${escapeHtml(profile.about || profile.description)}</p></section><section class="panel"><h2>Business Hours</h2>${hoursTable(profile.hours || {})}</section>`;
-  const testimonialsBody = `<section class="panel"><h2>Customer Reviews</h2><div class="card-grid">${profile.testimonials
-    .map((t) => `<article class="card"><blockquote>${escapeHtml(t.quote)}</blockquote><p><strong>${escapeHtml(t.author)}</strong></p><p>${escapeHtml(t.disclosure || "Individual experiences may vary.")}</p></article>`)
-    .join("")}</div></section>`;
-  const contactBody = `<section class="panel"><h2>Contact</h2><ul><li><strong>Phone:</strong> ${escapeHtml(profile.contact.phone || "Available on request")}</li><li><strong>Email:</strong> ${escapeHtml(profile.contact.email || "Available on request")}</li><li><strong>Website:</strong> ${profile.contact.website ? `<a href="${escapeHtml(profile.contact.website)}">${escapeHtml(profile.contact.website)}</a>` : "Available on request"}</li><li><strong>Address:</strong> ${escapeHtml(profile.contact.address || "Available on request")}</li></ul></section>`;
+  const aboutBody = `<section class="panel"><h2>About ${escapeHtml(profile.name)}</h2><p>${escapeHtml(content.aboutText || content.metaDescription)}</p></section>`;
+  const contactBody = `<section class="panel"><h2>Contact</h2>${renderContact(content)}</section><section class="panel"><h2>Hours</h2>${hoursTable(content.contact.hours || {})}</section><section class="panel"><h2>Service Areas</h2><p>${escapeHtml(content.contact.serviceAreas.join(", ") || "Contact us to confirm service area coverage.")}</p></section>`;
   const privacyBody = `<section class="panel"><h2>Privacy Policy</h2><p>We use essential cookies by default. Optional analytics remains off until explicit opt-in.</p><p>No third-party trackers are enabled by default.</p><p>${profile.privacyTrackerOptIn ? "Analytics hooks may run only after user consent." : "Analytics is disabled until opt-in."}</p><p>${escapeHtml(profile.privacyNotes || "Contact us for privacy requests and data handling questions.")}</p></section>`;
 
   const pages: Array<{ name: string; file: string; body: string; path: string }> = [
@@ -431,23 +492,20 @@ export async function generateStaticSite(
     { name: "Privacy", file: "privacy.html", body: privacyBody, path: "/privacy.html" }
   ];
 
-  if (includeTestimonials) {
-    pages.push({ name: "Testimonials", file: "testimonials.html", body: testimonialsBody, path: "/testimonials.html" });
-  }
-
   for (const page of pages) {
-    const html = renderLayout(profile, {
-      title: `${profile.name} | ${page.name}`,
-      description: profile.description,
+    const html = renderLayout(profile, content, {
+      title: page.name === "Home" ? content.siteTitle : `${profile.name} | ${page.name}`,
+      description: content.metaDescription,
       body: page.body,
       pageName: page.name,
-      includeTestimonials,
-      faqs: profile.faqs
+      pageFile: page.file,
+      faqs: content.faqs,
+      ogImage: hero.src
     });
     await fs.writeFile(path.join(siteDir, page.file), html, "utf8");
   }
 
-  const baseUrl = profile.contact.website || `https://example.com/${slug}`;
+  const baseUrl = content.contact.website || profile.contact.website || `https://example.com/${slug}`;
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${pages.map((page) => `  <url><loc>${baseUrl}${page.path}</loc></url>`).join("\n")}
@@ -460,7 +518,7 @@ ${pages.map((page) => `  <url><loc>${baseUrl}${page.path}</loc></url>`).join("\n
   if (options.includeLlmsTxt) {
     await fs.writeFile(
       path.join(siteDir, "llms.txt"),
-      `Project: ${profile.name}\nSummary: ${truncate(profile.description, 300)}\nContact: ${profile.contact.email || profile.contact.phone || "contact page"}\n`,
+      `Project: ${profile.name}\nSummary: ${truncate(content.metaDescription, 300)}\nContact: ${content.contact.email || content.contact.phone || "contact page"}\n`,
       "utf8"
     );
   }

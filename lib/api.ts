@@ -1,4 +1,11 @@
-import type { BusinessProfile, ProjectRecord } from "@/lib/shared";
+import type {
+  BusinessProfile,
+  GeneratedContent,
+  ProjectLayout,
+  ProjectRecord,
+  ProjectSection,
+  ProjectTheme
+} from "@/lib/shared";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
@@ -19,6 +26,16 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 export function getApiBase(): string {
   return API_BASE || "";
 }
+
+export type ProjectUpdatePayload = {
+  profile?: BusinessProfile;
+  theme?: ProjectTheme;
+  layout?: ProjectLayout;
+  sections?: ProjectSection[];
+  content?: GeneratedContent;
+  substantiationNotes?: Record<string, string>;
+  status?: "draft" | "generating" | "generated" | "edited" | "saved" | "error";
+};
 
 export async function extractFromUrl(url: string): Promise<{ ok: boolean; data?: BusinessProfile; fallbackSuggestions?: string[]; error?: string }> {
   const response = await fetch(`${API_BASE}/api/extract`, {
@@ -67,10 +84,17 @@ export async function updateProjectProfile(
   projectId: string,
   profile: BusinessProfile
 ): Promise<{ project: ProjectRecord }> {
+  return updateProject(projectId, { profile });
+}
+
+export async function updateProject(
+  projectId: string,
+  payload: ProjectUpdatePayload
+): Promise<{ project: ProjectRecord }> {
   return apiRequest(`/api/projects/${projectId}`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ profile })
+    body: JSON.stringify(payload)
   });
 }
 
@@ -107,4 +131,23 @@ export async function getJobStatus(jobId: string): Promise<{
   };
 }> {
   return apiRequest(`/api/jobs/${jobId}`);
+}
+
+export async function renderProject(
+  projectId: string,
+  status?: "draft" | "generated" | "edited" | "saved"
+): Promise<{ project: ProjectRecord; previewUrl: string }> {
+  return apiRequest(`/api/projects/${projectId}/render`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ includeLlmsTxt: true, includeHumansTxt: true, status })
+  });
+}
+
+export async function resetProject(projectId?: string): Promise<{ ok: boolean }> {
+  return apiRequest("/api/reset", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ projectId })
+  });
 }
