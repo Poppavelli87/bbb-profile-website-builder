@@ -4,7 +4,12 @@ import type {
   ProjectLayout,
   ProjectRecord,
   ProjectSection,
-  ProjectTheme
+  ProjectTheme,
+  SiteDefinition,
+  SiteIndexItem,
+  SiteRecord,
+  SiteStatus,
+  SiteTier
 } from "@/lib/shared";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
@@ -35,6 +40,15 @@ export type ProjectUpdatePayload = {
   content?: GeneratedContent;
   substantiationNotes?: Record<string, string>;
   status?: "draft" | "generating" | "generated" | "edited" | "saved" | "error";
+};
+
+export type AdminSitePayload = {
+  slug: string;
+  businessName: string;
+  tier?: SiteTier;
+  siteDefinitionJson: SiteDefinition;
+  complianceJson?: Record<string, unknown>;
+  createdBy?: string;
 };
 
 export async function extractFromUrl(url: string): Promise<{ ok: boolean; data?: BusinessProfile; fallbackSuggestions?: string[]; error?: string }> {
@@ -149,5 +163,64 @@ export async function resetProject(projectId?: string): Promise<{ ok: boolean }>
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ projectId })
+  });
+}
+
+export async function listAdminSites(query?: {
+  search?: string;
+  status?: SiteStatus;
+  tier?: SiteTier;
+}): Promise<{ sites: SiteIndexItem[] }> {
+  const params = new URLSearchParams();
+  if (query?.search) params.set("search", query.search);
+  if (query?.status) params.set("status", query.status);
+  if (query?.tier) params.set("tier", query.tier);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest(`/api/admin/sites${suffix}`);
+}
+
+export async function createAdminSite(payload: AdminSitePayload): Promise<{ site: SiteRecord; liveUrl: string }> {
+  return apiRequest("/api/admin/sites", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function getAdminSite(siteId: string): Promise<{ site: SiteRecord; liveUrl: string }> {
+  return apiRequest(`/api/admin/sites/${siteId}`);
+}
+
+export async function updateAdminSite(
+  siteId: string,
+  payload: Partial<AdminSitePayload> & { status?: SiteStatus }
+): Promise<{ site: SiteRecord; liveUrl: string }> {
+  return apiRequest(`/api/admin/sites/${siteId}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function publishAdminSite(
+  siteId: string,
+  payload: AdminSitePayload & { force?: boolean }
+): Promise<{ site: SiteRecord; liveUrl: string; compliance: Record<string, unknown> }> {
+  return apiRequest(`/api/admin/sites/${siteId}/publish`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function unpublishAdminSite(siteId: string): Promise<{ site: SiteRecord; liveUrl: string }> {
+  return apiRequest(`/api/admin/sites/${siteId}/unpublish`, {
+    method: "POST"
+  });
+}
+
+export async function archiveAdminSite(siteId: string): Promise<{ site: SiteRecord; liveUrl: string }> {
+  return apiRequest(`/api/admin/sites/${siteId}/archive`, {
+    method: "POST"
   });
 }

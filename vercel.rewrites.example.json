@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/:slug((?!admin|api|site|_next|favicon.ico|robots.txt|sitemap.xml).+)",
+      "destination": "/site/:slug"
+    }
+  ]
+}

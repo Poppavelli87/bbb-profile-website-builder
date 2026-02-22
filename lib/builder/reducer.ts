@@ -12,7 +12,8 @@ import type {
   ProjectLayout,
   ProjectRecord,
   ProjectSection,
-  ProjectTheme
+  ProjectTheme,
+  SiteDefinition
 } from "@/lib/shared";
 
 export type BuilderStatus = "draft" | "generated" | "edited" | "saved";
@@ -94,6 +95,25 @@ export function createBuilderPresentFromProject(project: ProjectRecord): Builder
     layout,
     sections: normalizeSections(layout, project.sections),
     substantiationNotes: project.substantiationNotes || {}
+  };
+}
+
+export function createBuilderPresentFromSiteDefinition(definition: SiteDefinition): BuilderPresent {
+  const profile = definition.profile;
+  const theme = normalizeTheme(definition.theme);
+  const normalizedTheme: ProjectTheme = {
+    presetId: theme.presetId,
+    overrides: theme.overrides || {},
+    buttonStyle: theme.buttonStyle as ButtonStyle
+  };
+  const layout = definition.layout || { presetId: DEFAULT_LAYOUT_ID };
+  return {
+    profile,
+    content: normalizeGeneratedContent(profile, definition.content),
+    theme: normalizedTheme,
+    layout,
+    sections: normalizeSections(layout, definition.sections),
+    substantiationNotes: definition.substantiationNotes || {}
   };
 }
 

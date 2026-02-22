@@ -12,9 +12,10 @@ export const dataRoot = writableBase();
 export const projectStorageDir = path.join(dataRoot, "projects");
 export const generatedRoot = path.join(dataRoot, "output");
 export const uploadsRoot = path.join(dataRoot, "uploads");
+export const siteStorageDir = path.join(dataRoot, "sites");
 
 export function ensureRuntimeDirs(): void {
-  [dataRoot, projectStorageDir, generatedRoot, uploadsRoot].forEach((dir) => {
+  [dataRoot, projectStorageDir, generatedRoot, uploadsRoot, siteStorageDir].forEach((dir) => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
