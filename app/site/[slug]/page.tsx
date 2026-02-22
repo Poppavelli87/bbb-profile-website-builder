@@ -202,10 +202,10 @@ export default async function PublicSitePage({ params }: Params) {
             </section>
           ) : null}
 
-          {sectionEnabled(sections, "about") ? (
+          {sectionEnabled(sections, "about") && content.aboutText.trim().length > 0 ? (
             <section className="panel" id="about">
               <h2>About</h2>
-              <p>{content.aboutText}</p>
+              <p>{content.aboutText.trim()}</p>
               {model.profile.typesOfBusiness.length > 0 ? (
                 <div className="types-of-business">
                   <h3>Types of Business</h3>

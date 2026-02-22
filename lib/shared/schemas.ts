@@ -77,7 +77,7 @@ const tokenArraySchema = z.preprocess(
   z.array(z.string())
 );
 
-export const generatedContentSchema = z.object({
+const generatedContentBaseSchema = z.object({
   siteTitle: z.string().min(1),
   metaDescription: z.string().default(""),
   heroHeadline: z.string().default(""),
@@ -92,6 +92,17 @@ export const generatedContentSchema = z.object({
     serviceAreas: tokenArraySchema.default([])
   })
 });
+
+export const generatedContentSchema = z.preprocess((input) => {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return input;
+  }
+  const raw = input as Record<string, unknown>;
+  return {
+    ...raw,
+    aboutText: raw.aboutText !== undefined ? raw.aboutText : raw.about
+  };
+}, generatedContentBaseSchema);
 
 const businessProfileBaseSchema = z.object({
   id: z.string().optional(),

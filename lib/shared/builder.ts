@@ -374,6 +374,14 @@ export function normalizeGeneratedContent(
     return defaults;
   }
 
+  const raw = content as GeneratedContent & { about?: string };
+  const aboutText =
+    raw.aboutText !== undefined
+      ? raw.aboutText
+      : raw.about !== undefined
+        ? raw.about
+        : defaults.aboutText;
+
   const mergedServices =
     content.services && content.services.length > 0
       ? content.services.map((service) => ({
@@ -388,7 +396,7 @@ export function normalizeGeneratedContent(
     heroHeadline: content.heroHeadline || defaults.heroHeadline,
     heroSubheadline: content.heroSubheadline || defaults.heroSubheadline,
     heroCtaText: content.heroCtaText || defaults.heroCtaText,
-    aboutText: content.aboutText || defaults.aboutText,
+    aboutText,
     services: mergedServices,
     faqs: content.faqs || defaults.faqs,
     quickAnswers: content.quickAnswers || defaults.quickAnswers,

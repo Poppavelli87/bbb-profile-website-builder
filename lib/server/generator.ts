@@ -348,6 +348,7 @@ function sectionMarkup(
   images: LocalImage[]
 ): string {
   const hero = images.find((image) => image.hero) || images[0];
+  const aboutText = content.aboutText.trim();
   switch (sectionId) {
     case "hero":
       return `<section class="panel hero">
@@ -369,7 +370,10 @@ function sectionMarkup(
         )
         .join("")}</div></section>`;
     case "about":
-      return `<section class="panel"><h2>About ${escapeHtml(profile.name)}</h2><p>${escapeHtml(content.aboutText || content.metaDescription)}</p></section>`;
+      if (!aboutText) {
+        return "";
+      }
+      return `<section class="panel"><h2>About ${escapeHtml(profile.name)}</h2><p>${escapeHtml(aboutText)}</p></section>`;
     case "service_areas":
       return `<section class="panel"><h2>Service Areas</h2><p>${escapeHtml(content.contact.serviceAreas.join(", ") || "Contact us to confirm service coverage.")}</p></section>`;
     case "faq":
